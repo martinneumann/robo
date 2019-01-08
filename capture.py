@@ -129,16 +129,6 @@ def detectGesture():
             # Our operations on the frame come here
             retval, img = cap.read(frame)
 
-            # to grayscale
-            # gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-            # edge detection (canny)
-            # edged = cv2.Canny(gray, 150, 200)
-
-            # ret, thresh = cv2.threshold(edged, 127,255,0)
-            # _, contours, h = cv2.findContours(thresh, 1, 2)
-            # i = 0 
-
             # skin detection algorithm
             lower = np.array([0, 48, 80], dtype = "uint8")
             upper = np.array([20, 255, 255], dtype = "uint8")
@@ -152,6 +142,11 @@ def detectGesture():
 
             skinMask = cv2.GaussianBlur(skinMask, (3, 3), 0)
             skin = cv2.bitwise_and(frame, frame, mask = skinMask)
+            print(str(skinMask.shape))
+            print(str(skinMask))
+            # ret, thresh = cv2.threshold(edged, 127,255,0)
+            # _, contours, h = cv2.findContours(skin, 1, 2)
+            # print("found " + str(len(contours)))
 
             cv2.imshow("images", np.hstack([frame, skin]))
              
@@ -160,45 +155,121 @@ def detectGesture():
                 break
                                  
 
-
-        '''    for cnt in contours:
-                approx = cv2.approxPolyDP(cnt,0.01*cv2.arcLength(cnt,True),True)
-                if (len(approx > 20)):
-                    cv2.drawContours(frame,[cnt],0,(0,255,255),-1)
-                i = i+1
-
-
-            # template matching
-            # template = cv2.imread('img.jpg', 0)
-            # template = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            # template = cv2.Canny(template, 150, 200)
-            # w = 640
-            # h = 480
-            res = cv2.matchTemplate(cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY), template, cv2.TM_CCOEFF_NORMED)
-            # print(str(res))
-            min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
-            print(cv2.minMaxLoc(res))
-            top_left = max_loc
-            bottom_right = (top_left[0] + w, top_left[1] + h)
-            cv2.rectangle(frame,top_left, bottom_right, 255, 2)
-            #plt.subplot(121),plt.imshow(res,cmap = 'gray')
-            #plt.title('Matching Result'), plt.xticks([]), plt.yticks([])
-            #plt.subplot(122),plt.imshow(frame,cmap = 'gray')
-            #plt.title('Detected Point'), plt.xticks([]), plt.yticks([])
-            #plt.suptitle("test")
-            #plt.show()
-            cv2.imshow('hand', frame)
-            if cv2.waitKey(50) & 0xFF == ord('q'):
-                break
-                '''
     cap.release()
     cv2.destroyAllWindows()
 
+# state
+
+class state( object ):
+    def __init__(self):
+        print("Current state: " + str(self.__class__.__name__))
+
+class calibration:
+    def __init__(self):
+        print("Calibrating the board... Give me a minute...")
+        calibrate()
+    def on_event(self, event):
+        # initialization
+        if event == '1':
+            return initial()
+
+class initial(state):
+    def __init__(self):
+        print("Welcome! \nDo you want to start a game against a human or against me, the AI?\nPress 1 for human vs. human and 2 for human vs. AI!")
+
+    def on_event(self, event):
+        # initialization
+        if event == '1':
+            return new_game_human()
+        if event == '2':
+            return new_game_cpu()
+        return self
+
+class new_game_human(state):
+    def __init__(self):
+        print("Ok then! A game against another human!\n")
+    def on_event(self, event):
+        # start new game human vs. human
+
+        if event == '1':
+            return find_piece()
+        return self
+
+class new_game_cpu(state):
+    def __init__(self):
+        print("Ok then! You want to play against me! Let's start.\n")
+    def on_event(self, event):
+        # start new game human vs. cpu
+
+        if event == '1':
+            return find_piece()
+        return self
+
+class find_piece(state):
+    def __init__(self):
+        print("Can you help me find the next piece? Please point at it.\n")
+    def on_event(self, event):
+        # find the piece the human is pointing at
+
+        if event == '1':
+            return find_location()
+        return self
+
+class find_location():
+    def __init__(self):
+        print("Thanks! Can you show me where to move it next? Confirm when done!\n")
+    def on_event(self, event):
+        # chain of locations is possible
+
+        if event == '1':
+            return find_location()
+        if event == '2':
+            return perform_move()
+        return self
+
+class perform_move():
+    def __init__(self):
+        print("I'm moving the piece now...\n")
+    def on_event(self, event):
+        # perform this move
+
+        if event == '1':
+            return change_player()
+        return self
+
+class change_player():
+    def __init__(self):
+        print("It's now the other player's turn!\n")
+    def on_event(self, event):
+        # change the player human -> human2 or -> cpu, cpu -> human
+        if event == '1':
+            return find_piece()
+        return self
+
+class state_machine( object ):
+    def __init__(self):
+        self.state = calibration()
+    def on_event(self, event):
+        self.state = self.state.on_event(event)
 
 
 def main():
-    calibrate()
-    detectGesture()
+    print("Hello. Press any key to start calibration.")
+    raw_input()
+    machine = state_machine()
+    while(1):
+        try:
+            command = input()
+        except SyntaxError:
+            print("Unknown input.")
+            continue
+        except NameError:
+            print("Name Error, please try again.")
+            continue
+        machine.on_event(str(command))
+        print("Current state: " + machine.state.__class__.__name__)
+
+    # detectGesture()
 
 
 if __name__ == '__main__':main()
