@@ -3,6 +3,9 @@
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
+import sys
+import socket
+import struct
 
 
 
@@ -25,7 +28,7 @@ def calibrate():
         # Capture frame-by-frame
         _ret, frame = cap.read()
 
-        
+
         if (not frame is None): 
 
             # Our operations on the frame come here
@@ -52,8 +55,8 @@ def calibrate():
             print("Shapes found: " + str(len(contours)))
             for cnt in contours:
                 approx = cv2.approxPolyDP(cnt,0.01*cv2.arcLength(cnt,True),True)
-                if len(approx) > 11 and len(approx) < 18: 
-                    if (cv2.contourArea(cnt) > 150 and cv2.contourArea(cnt) < 3800):
+                if len(approx) > 10: 
+                    if (cv2.contourArea(cnt) > 300 and cv2.contourArea(cnt) < 1800):
                         if (len(edge_buf) < 12):
                             cv2.drawContours(img,[cnt],0,(0,255,255),-1)
 
@@ -65,7 +68,7 @@ def calibrate():
                             cv2.circle(frame, (cX, cY), 7, (255, 255, 255), -1)
                             cv2.putText(frame, str(cX) + ", " + str(cY), (cX - 20, cY - 20),
                                     cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-                        o = o + 1
+                            o = o + 1
                         if i < 12:
                             board_edges[i] = [cX, cY]
                             i = i + 1
@@ -101,8 +104,8 @@ def calibrate():
                 for elem in av_edge:
                     cv2.circle(img, (int(elem[0]), int(elem[1])), 7, (255, 0, 0), -1)
                     cv2.putText(img, (str(elem[0]) + ", " + str(elem[1])), (int(elem[0]) - 20, int(elem[1]) - 20),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-                cv2.imshow('frame', img)
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
+                    cv2.imshow('frame', img)
                 if cv2.waitKey(50) & 0xFF == ord('q'):
                     break
                 input_ = raw_input("Is this calibration correct? Press Y/N to continue.")
@@ -122,6 +125,10 @@ def calibrate():
 
 def detectGesture():
     cap = cv2.VideoCapture(-1)
+    match = cv2.imread("data/000.png")
+    # match = cv2.cvtColor(match, cv2.COLOR_BGR2GRAY)
+    w = 640
+    h = 480
     while(1):
         _ret, frame = cap.read()
         if (not frame is None): 
@@ -142,18 +149,26 @@ def detectGesture():
 
             skinMask = cv2.GaussianBlur(skinMask, (3, 3), 0)
             skin = cv2.bitwise_and(frame, frame, mask = skinMask)
-            print(str(skinMask.shape))
-            print(str(skinMask))
             # ret, thresh = cv2.threshold(edged, 127,255,0)
             # _, contours, h = cv2.findContours(skin, 1, 2)
             # print("found " + str(len(contours)))
+            result_ = cv2.matchTemplate(skin, match,
+                    cv2.TM_SQDIFF)
+            print(str(result_))
+            loc = np.where( result_ >= 0.80)
+            # _, maxVal, _, maxLoc = cv2.minMaxLoc(result_)
+            print(str(np.ndim(loc)))
+            print("max loc: " + str(loc[0]) + ", " + str(loc[1]))
+            for pt in zip(*loc[::-1]):
+                cv2.rectangle(frame, pt, (pt[0] + w, pt[1] + h),
+                        (0,255,255), 2)
 
-            cv2.imshow("images", np.hstack([frame, skin]))
-             
+                cv2.imshow("images", np.hstack([frame, skin]))
+
             # if the 'q' key is pressed, stop the loop
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 break
-                                 
+
 
     cap.release()
     cv2.destroyAllWindows()
@@ -210,6 +225,7 @@ class find_piece(state):
         print("Can you help me find the next piece? Please point at it.\n")
     def on_event(self, event):
         # find the piece the human is pointing at
+        detectGesture()
 
         if event == '1':
             return find_location()
@@ -254,6 +270,24 @@ class state_machine( object ):
 
 
 def main():
+    # connect to server
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_address = ("192.168.0.101", 9000)
+    print("connecting...")
+    sock.connect(server_address)
+
+    try:
+        while(1):	
+            # Send data
+            message = 'This is the message.  It will be repeated.'
+            print >>sys.stderr, 'sending "%s"' % message
+            sock.sendall(message)
+
+    finally:
+	print >>sys.stderr, 'closing socket'
+	sock.close()
+
+    # detectGesture()
     print("Hello. Press any key to start calibration.")
     raw_input()
     machine = state_machine()
@@ -270,6 +304,5 @@ def main():
         print("Current state: " + machine.state.__class__.__name__)
 
     # detectGesture()
-
 
 if __name__ == '__main__':main()
