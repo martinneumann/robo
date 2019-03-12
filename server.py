@@ -1,33 +1,45 @@
 #!/usr/bin/env python
 
-import sys, socket, struct
+import cv2                                                                      
+import numpy as np                                                              
+from matplotlib import pyplot as plt                                            
+import sys                                                                      
+import socket                                                                   
+import struct                                                                   
+import atexit
 
-def main():                                                                     
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)                    
-    server_address = ("192.168.0.101", 9000)                                    
-    print >> sys.stderr, "starting on %s port %s" % server_address              
-    sock.bind(server_address)                                                   
-    # sock.setblocking(False)                                                   
-    sock.listen(1)                                                              
-    while True:                                                                 
-        # Wait for a connection                                                 
-        print >>sys.stderr, 'waiting for a connection'                          
-        connection, client_address = sock.accept()                              
-                                                                                
-        try:                                                                    
-            print >> sys.stderr, "connection from", client_address              
-            data = connection.recv(256)                                        
-            print(data)
-            # connection.sendall("1A1B2")                                         
-            # print >> sys.stderr, "received %s" % data                         
-            # if data:                                                          
-            #    print >> sys.stderr, "sending data to client"                  
-            #    connection.sendall(data)                                       
-            # else:                                                             
-            #    print >> sys.stderr, "no more data from", client_address       
-            #    break                                                          
-        finally:                                                                
-           # connection.close()
-           print("finally")
+# server the robot client program and the business logic client connect to
 
-if __name__ == '__main__':main()                                                
+sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)                    
+server_address = ("192.168.0.101", 9000)                                    
+print("connecting to server, address is: " + str(server_address))           
+sock.bind(server_address)                                                       
+# sock.connect(server_address)                                                
+sock.listen(1)
+message = '1A1'                                                             
+
+
+def exit_handler():
+    print("exiting program, closing connection")
+
+atexit.register(exit_handler)
+
+while True:
+    # Wait for a connection
+    print >>sys.stderr, 'waiting for a connection'
+    connection, client_address = sock.accept()
+    print("client connected")
+
+    while(1):                                                                   
+	# Send data                                                             
+	connection.sendall(message)                                                   
+	print >>sys.stderr, 'sending "%s"' % message                            
+
+	data = connection.recv(255)
+	print("received " + str(data))
+	newinput = raw_input("enter next message: 1")                     
+	message = '1' + newinput                                                
+	if(newinput == 'q'):
+	    print("closing connection")
+	    connection.close()
+
