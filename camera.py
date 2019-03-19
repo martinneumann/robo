@@ -41,7 +41,7 @@ def calibrate():
 
             # find contours
             ret, thresh = cv2.threshold(edged, 127, 255, 0)
-            contours, h = cv2.findContours(thresh, 1, 2)
+            _, contours, h = cv2.findContours(thresh, 1, 2)
 
             o = 0
             i = 0
@@ -168,3 +168,5 @@ def detectGesture():
 
     cap.release()
     cv2.destroyAllWindows()
+
+    return ("A1")

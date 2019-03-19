@@ -12,7 +12,6 @@ gi.require_version('Gtk', '3.0')
 class communicationManager():
     receivedMessage = ""    # response received from robot
     messageToSend = ""      # message to be sent
-    move = []               # complete move message list
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
     def __init__(self):
@@ -27,20 +26,21 @@ class communicationManager():
     def _disconnect(self):
         self.sock.close()
 
-    def sendMove(self):
-        for msg in self.move:
+    def sendMove(self, move):
+        for msg in move:
             # loop over all messages and send them
             # wait for response before sending another
-            sock.sendall(msg)
-            print("send data" + msg)
-            receivedMessage = sock.recv()
+            self.sock.sendall(msg)
+            print("send data " + msg)
+            receivedMessage = self.sock.recv(2)
             if (receivedMessage == "ok"):
+                print("received 'ok'")
                 continue
-            else:
-                print("Robot reported an error: " + receivedMessage)
+            elif (receivedMessage == "error"):
+                print("Robot reported an error.")
                 break
-
-        move = []
+            else:
+                continue
 
 
 comManager = communicationManager()
@@ -186,36 +186,60 @@ class Handler:
         Gtk.main_quit()
 
     def newGameHuman(self, *args):
-        # detectGesture()
-        print("Hello. Press any key to start calibration.")
-        input()
-        machine = state_machine()
-        while(1):
-            try:
-                command = input()
-            except SyntaxError:
-                print("Unknown input.")
-                continue
-            except NameError:
-                print("Name Error, please try again.")
-                continue
-            machine.on_event(str(command))
-            print("Current state: " + machine.state.__class__.__name__)
+        # reset board
+        # start game
+        print("resetting board...")
+        print("board successfully reset.")
+        print("current turn: player 1")
+        # get move
+        # perform move
+        # update Board (determine winner, pieces to remove, damen)
+        # change player -> jmp get move
 
     def newGameAI(self, *args):
-        print("not implemented")
+        # reset board
+        # start game (human)
+        print("resetting board...")
 
     def startCalibration(self, *args):
         camera.calibrate()
+        print("successfully calibrated.")
 
-    def confirm(self, *args):
-        print("not implemented")
+    def performMove(self, *args):
+        print("performing move...")
+
+        # test code
+        move = ["1C1", "2C1", "1D2", "3D2"]
+        # end test code
+        comManager.sendMove(move)
+
+
+class game():
+    moves = []
+
+    # game process
+    # 1 connect to robot
+    # start game against ai or human
+    # player 1 chooses first move:
+    # select piece (A1) - select position (B1) - confirm move (performMove)
+    # message: ["1A1" , "200", "1B1", "300", "500"]
+    # game logic checks if pieces have to be removed
+    # player changes to player 2
+    # select piece - select position - [...] - confirm move
+
+    def getMoveToPoint():
+        # finds the next move within this move chain
+        print("getting move")
+        moves.append("1" + camera.detectGesture())
+
 
 builder = Gtk.Builder()
 
 #
 # Main Function
 #
+
+
 def main():
     win = gui()
     builder.add_from_file("gui.glade")
