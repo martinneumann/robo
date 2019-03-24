@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import camera
+import game as rules
 from gi.repository import Gtk
 import gi
 import importlib
@@ -209,9 +210,11 @@ class Handler:
         print("performing move...")
 
         # test code
-        move = ["1C1", "2C1", "1D2", "3D2"]
+        # move = ["1C1", "2C1", "1D2", "3D2"]
+        b = rules.valid_move("A1", "C2 B2")
+        print(str(b))
         # end test code
-        comManager.sendMove(move)
+        # comManager.sendMove(move)
 
 
 class game():

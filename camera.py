@@ -40,43 +40,35 @@ def calibrate():
             # cv2.imshow('canny', edged)
 
             # find contours
-            ret, thresh = cv2.threshold(edged, 127, 255, 0)
-            _, contours, h = cv2.findContours(thresh, 1, 2)
+            ret, thresh = cv2.threshold(edged, 200, 255, 0)
+            testimg, contours, h = cv2.findContours(thresh, 1, 2)
 
             o = 0
             i = 0
             print("Shapes found: " + str(len(contours)))
             for cnt in contours:
                 approx = cv2.approxPolyDP(
-                    cnt, 0.01*cv2.arcLength(cnt, True), True)
-                if len(approx) > 10:
-                    if (cv2.contourArea(cnt) > 300 and cv2.contourArea(cnt) < 1800):
-                        if (len(edge_buf) < 12):
-                            cv2.drawContours(img, [cnt], 0, (0, 255, 255), -1)
+                    cnt, 0.05*cv2.arcLength(cnt, True), True)
+                if len(approx) == 3:
 
-                        # find center
-                        M = cv2.moments(cnt)
+                    # find center
+                    M = cv2.moments(cnt)
+                    if (len(M) > 4):
                         cX = int(M["m10"] / M["m00"])
                         cY = int(M["m01"] / M["m00"])
-                        if (len(edge_buf) < 9):
-                            cv2.circle(frame, (cX, cY), 7, (255, 255, 255), -1)
+                        if (len(edge_buf) < 12):
+                            cv2.drawContours(img, [cnt], 0, (0, 255, 255), -1)
                             cv2.putText(frame, str(cX) + ", " + str(cY), (cX - 20, cY - 20),
                                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
                             o = o + 1
-                        if i < 12:
+                        if i == 4:
                             board_edges[i] = [cX, cY]
                             i = i + 1
-                '''if len(approx) > 3 and len(approx) < 5:
-                    if (cv2.contourArea(cnt) >300):
-                        if (len(edge_buf) < 12):
-                            cv2.drawContours(img,[cnt],0,(0,0,255),-1)
-                            o = o + 1
-                '''
 
             o = o/2
             # if a == 1:
             #cons_edges = board_edges
-            if o == 6:
+            if o == 4:
                 for index, edge in enumerate(cons_edges):
                     if a == 0:
                         break
@@ -113,8 +105,8 @@ def calibrate():
                     edge_buf = []
 
             # Display the resulting frame
-            cv2.imshow('frame', img)
-            if cv2.waitKey(50) & 0xFF == ord('q'):
+            cv2.imshow('robot view', img)
+            if cv2.waitKey(10) & 0xFF == ord('q'):
                 break
     cap.release()
     cv2.destroyAllWindows()
