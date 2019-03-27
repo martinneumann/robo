@@ -352,7 +352,7 @@ def begin_game():
     while 1:
         print_position(position)
         print("Give the move to play(exp: A1 B2):")
-        move = input()
+        move = raw_input()
         if len(move) < 4:
             move = "00000"
         if valid_move(position, move) == True:

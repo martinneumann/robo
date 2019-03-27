@@ -7,7 +7,11 @@ import gi
 import importlib
 import socket
 import sys
+from operator import itemgetter
 gi.require_version('Gtk', '3.0')
+
+edges = []
+board_fields = {}
 
 
 class communicationManager():
@@ -192,6 +196,8 @@ class Handler:
         print("resetting board...")
         print("board successfully reset.")
         print("current turn: player 1")
+        foundPoint = camera.detectGesture()
+        print(str(board_fields))
         # get move
         # perform move
         # update Board (determine winner, pieces to remove, damen)
@@ -203,8 +209,37 @@ class Handler:
         print("resetting board...")
 
     def startCalibration(self, *args):
-        camera.calibrate()
+        edges = camera.calibrate()
+
+        # sorted(edges)
+        # edges.sort(key=itemgetter(1))
         print("successfully calibrated.")
+        print("board edges are: " +
+              str(edges[0]) + ", " + str(edges[2]) + ", " + str(edges[4]) + ", " + str(edges[6]))
+        print("calculating fields...")
+        x_dist = (edges[0][0] - edges[2][0])/10
+        print("x dist: " + str(x_dist))
+        y_dist = (edges[0][1] - edges[4][1])/10
+        print("y dist: " + str(y_dist))
+        letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+        numbers = ['1', '2', '3', '4', '5', '6', '7', '8']
+        x_val = edges[2][0] + x_dist  # first x value
+        y_val = edges[6][1] + y_dist  # first y value
+        print("x val: " + str(x_val) + ", y val: " + str(y_val))
+        field_edges = []
+        for let in letters:
+            # A, B, C, ...
+            for num in numbers:
+                # create fields
+                # 1, 2, 3, ...
+                tmp = str(let + num)
+                board_fields[tmp] = [x_val, y_val]
+                x_val = x_val + x_dist
+            y_val += y_dist
+            x_val = edges[2][0] + x_dist  # first x value
+
+        print("board: " + str(board_fields))
+        print("setup ready.")
 
     def performMove(self, *args):
         print("performing move...")
