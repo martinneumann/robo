@@ -18,12 +18,14 @@ current_piece = []  # position of current piece
 current_target = []  # position of target move
 current_move = []  # move [piece_position, move_type]
 validation_move = ""  # move for validation
+lbl_player = None
 
 
 class communicationManager():
     receivedMessage = ""    # response received from robot
     messageToSend = ""      # message to be sent
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    current_player = 1
 
     def __init__(self):
         print("setup")
@@ -182,7 +184,7 @@ class state_machine(object):
 
 class Handler:
     # handlers for gui events
-
+    current_player = 1
     def connectToServer(self, button):
         # connects to the robot
         comManager._connect()
@@ -241,7 +243,7 @@ class Handler:
             validation_move = str(current_piece + current_target)
             self.performMove()
             print("move finished")
-            raw_input()
+            raw_input()  # @TODO: replace with button function
 
             # move = ["1C1", "2C1", "1D2", "3D2"]
 
@@ -309,10 +311,16 @@ class Handler:
 
         # change player
     def changePlayer(self, *args):
-        if self.current_player == 1:
-            self.current_player = 2
+        print("changing player: " + str(lbl_player))
+        global current_player
+        global lbl_player
+        if current_player == 1:
+            current_player = 2
+            lbl_player.set_text("Player 2")
         else:
-            self.current_player = 1
+            current_player = 1
+            lbl_player.set_text("Player 1")
+
 
 
 class game():
@@ -342,12 +350,15 @@ builder = Gtk.Builder()
 
 
 def main():
+    global lbl_player
     win = gui()
     builder.add_from_file("gui.glade")
     window = builder.get_object("win")
     label = builder.get_object("connectionState")
     # win.connect("destroy", Gtk.main_quit)
     builder.connect_signals(Handler())
+    lbl_player = builder.get_object("lbl_player")
+    print(str(lbl_player))
     Gtk.main()
 
 

@@ -7,6 +7,11 @@
     <property name="can_focus">False</property>
     <property name="pixbuf">robo_.png</property>
   </object>
+  <object class="GtkImage" id="image2">
+    <property name="visible">True</property>
+    <property name="can_focus">False</property>
+    <property name="pixbuf">newarrow.png</property>
+  </object>
   <object class="GtkWindow">
     <property name="width_request">1920</property>
     <property name="height_request">1080</property>
@@ -461,7 +466,7 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkLabel">
+                                  <object class="GtkLabel" id="lbl_player">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="margin_left">5</property>
@@ -528,7 +533,7 @@
                                 </child>
                                 <child>
                                   <object class="GtkButton">
-                                    <property name="label" translatable="yes">Undo Move</property>
+                                    <property name="label" translatable="yes">Change Player</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">True</property>
@@ -536,6 +541,9 @@
                                     <property name="margin_right">5</property>
                                     <property name="margin_top">5</property>
                                     <property name="margin_bottom">5</property>
+                                    <property name="image">image2</property>
+                                    <property name="image_position">top</property>
+                                    <signal name="clicked" handler="changePlayer" swapped="no"/>
                                   </object>
                                   <packing>
                                     <property name="expand">False</property>
