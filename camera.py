@@ -111,7 +111,7 @@ def calibrate():
 
             # Display the resulting frame
             cv2.imshow('robot view', img)
-            if cv2.waitKey(100) & 0xFF == ord('q'):
+            if cv2.waitKey(1000) & 0xFF == ord('q'):
                 break
     cap.release()
     cv2.destroyAllWindows()
@@ -159,16 +159,16 @@ def detectGesture():
         skin = cv2.bitwise_and(frame, frame, mask=skinMask)
 
         skin_new = cv2.Canny(skin, 100,  255)
-        skin_new = cv2.dilate(skin_new, None, iterations=1)
-        skin_new = cv2.erode(skin_new, None, iterations=1)
+        skin_new = cv2.dilate(skin_new, None, iterations=3)
+        skin_new = cv2.erode(skin_new, None, iterations=3)
         _, contours, _ = cv2.findContours(
             skin_new, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
         # show the skin in the image along with the mask
         hull_list = []
-        for i in range(len(contours)):
-            hull = cv2.convexHull(contours[i])
-            hull_list.append(hull)
+        # for i in range(len(contours)):
+        #    hull = cv2.convexHull(contours[i])
+        #    hull_list.append(hull)
         # Draw contours + hull results
 
         # hull = cv2.convexHull(skin_new)
@@ -176,58 +176,147 @@ def detectGesture():
         drawing = np.zeros(
             (skin_new.shape[0], skin_new.shape[1], 3), dtype=np.uint8)
         i = 0
-        for cnt in contours:
-            if cv2.contourArea(cnt) > 300:
-                color = (rng.randint(0, 256), rng.randint(
-                    0, 256), rng.randint(0, 256))
-                # cv2.drawContours(drawing, contours, i, color)
-                _, triangle = cv2.minEnclosingTriangle(cnt)
-                print("tri " + str(triangle[0][0]) +
-                      str(triangle[1][0]) + str(triangle[2][0]))
-                pt1 = (triangle[0][0][0], triangle[0][0][1])
-                pt2 = (triangle[1][0][0], triangle[1][0][1])
-                pt3 = (triangle[2][0][0], triangle[2][0][1])
 
-                cv2.line(skin_new, pt1, pt2, color)
-                cv2.line(skin_new, pt2, pt3, color)
-                cv2.line(skin_new, pt3, pt1, color)
+        numberofpoints = 0
+        for contour in contours:
+            for point in contour:
+                numberofpoints = numberofpoints + 1
+        allcountours = np.zeros((numberofpoints, 1, 2), dtype=np.int32)
 
-                dist1 = getDistance(pt1[0], pt1[1], pt2[0], pt2[1])
-                dist2 = getDistance(pt2[0], pt2[1], pt3[0], pt3[1])
-                dist3 = getDistance(pt3[0], pt3[1], pt1[0], pt1[1])
-                point = [0, 0]
-                if (dist1 < dist2) and (dist1 < dist3):
-                    # dist 1 is smallest -> pt3
-                    point = pt3
-                if (dist2 < dist1) and (dist2 < dist3):
-                    point = pt1
-                if (dist3 < dist1) and (dist3 < dist2):
-                    point = pt2
-                avg_points.append(point)
-                cv2.putText(skin_new, str(point), (point[0], point[1]),
-                            cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
-                print("distances: " + str(dist1) + ", " +
-                      str(dist2) + ", " + str(dist3))
+        count = 0
+        for contour in contours:
+            for point in contour:
+                allcountours[count][0] = [point[0][0], point[0][1]]
+                count = count + 1
+        cnt = allcountours
 
-                # cv2.line(skin_new, triangle[1], triangle[2], color)
-                # cv2.line(skin_new, triangle[2], triangle[0], color)
+        color = (rng.randint(0, 256), rng.randint(
+            0, 256), rng.randint(0, 256))
+        # cv2.drawContours(drawing, contours, i, color)
+        # _, triangle = cv2.minEnclosingTriangle(cnt)
+        # center, radius = cv2.minEnclosingCircle(cnt)
+        hull = cv2.convexHull(cnt, returnPoints=False)
 
-                cv2.drawContours(drawing, hull_list, i, color)
+        # print("tri " + str(triangle[0][0]) +
+        #      str(triangle[1][0]) + str(triangle[2][0]))
+        # pt1 = (triangle[0][0][0], triangle[0][0][1])
+        # pt2 = (triangle[1][0][0], triangle[1][0][1])
+        # pt3 = (triangle[2][0][0], triangle[2][0][1])
+
+        # cv2.line(skin_new, pt1, pt2, color)
+        # cv2.line(skin_new, pt2, pt3, color)
+        # cv2.line(skin_new, pt3, pt1, color)
+        '''
+        dist1 = getDistance(pt1[0], pt1[1], pt2[0], pt2[1])
+        dist2 = getDistance(pt2[0], pt2[1], pt3[0], pt3[1])
+        dist3 = getDistance(pt3[0], pt3[1], pt1[0], pt1[1])
+        point = [0, 0]
+        if (dist1 < dist2) and (dist1 < dist3):
+            # dist 1 is smallest -> pt3
+            point = pt3
+        if (dist2 < dist1) and (dist2 < dist3):
+            point = pt1
+        if (dist3 < dist1) and (dist3 < dist2):
+            point = pt2
+        avg_points.append(point)
+        '''
+        # cv2.putText(skin_new, str(point), (point[0], point[1]),
+        #            cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
+        # print("distances: " + str(dist1) + ", " +
+        #      str(dist2) + ", " + str(dist3))
+
+        # cv2.line(skin_new, triangle[1], triangle[2], color)
+        # cv2.line(skin_new, triangle[2], triangle[0], color)
+        # cv2.circle(skin_new, (int(center[0]), int(
+        #    center[1])), int(radius), color, 2)
+        if hull is not None:
+            defects = cv2.convexityDefects(cnt, hull)
+            print("hull: " + str(hull))
+            print("defects: " + str(defects))
+            print(str(defects[2][0]))
+            # cv2.putText(skin_new, str(defects[2][0]), (int(defects[2][0]), int(
+            #    defects[2][1])),
+            #    cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
+            # cv2.drawContours(skin_new, hull, i, color)
+            farthest_dist = 1
+            farthest_point = ()
+            for i in range(defects.shape[0]):
+                s, e, f, d = defects[i, 0]
+                start = tuple(cnt[s][0])
+                end = tuple(cnt[e][0])
+                far = tuple(cnt[f][0])
+                cv2.line(skin_new, start, end, color, 2)
+                # cv2.circle(skin_new, far, 5, color, -1)
+
+            ret, thresh = cv2.threshold(frame, 200, 255, 0)
+
+            defectsarray = []
+            for i in range(defects.shape[0]):
+                s, e, f, d = defects[i, 0]
+                start = tuple(cnt[s][0])
+                end = tuple(cnt[e][0])
+                far = tuple(cnt[f][0])
+                defectsarray.append([start[0], start[1]])
+            print(str(defectsarray))
+
+            max_dist = 0
+            farthest_point = []
+            M = cv2.moments(np.int32(defectsarray))
+
+            # get centroid
+            cX = int(M["m10"] / M["m00"])
+            cY = int(M["m01"] / M["m00"])
+            cv2.putText(skin_new, "centroid", (cX - 25, cY - 25),
+                        cv2.FONT_HERSHEY_PLAIN, 1, color)
+            cv2.circle(skin_new, (cX, cY), 5, (255, 255, 255), 1)
+
+            for point in defectsarray:
+                print("in loop for defects")
+                # calculate farthesst point
+                if getDistance(cX, cY, point[0], point[1]) > max_dist:
+                    max_dist = getDistance(cX, cY, point[0], point[1])
+                    farthest_point = point
+                    print("new farthest point: " + str(point) +
+                          " with distance: " + str(max_dist))
+            cv2.circle(
+                skin_new, (farthest_point[0], farthest_point[1]), 20, (255, 255, 0), 1)
+
+            # rect = cv2.minAreaRect(cnt)
+
+            # box = cv2.boxPoints(rect)
+            # box = np.int0(box)
+            # cv2.drawContours(skin_new, [box], 0, color, 2)
+            '''
+            ellipse = cv2.fitEllipse(cnt)
+
+            skin_new = cv2.ellipse(skin_new, ellipse, (0, 255, 0), 2)
+
+            rows, cols = skin_new.shape[:2]
+            [vx, vy, x, y] = cv2.fitLine(cnt, cv2.DIST_L2, 0, 0.01, 0.01)
+            lefty = int((-x*vy/vx) + y)
+            righty = int(((cols-x)*vy/vx)+y)
+            print("line: " + str(vx) + ", " + str(vy) +
+                    ", " + str(x) + ", " + str(y))
+            if (vx > 0 and vy > 0 and x > 0 and y > 0):
+                skin_new = cv2.line(skin_new, (cols-1, righty),
+                                    (0, lefty), color, 2)
+                                    '''
+            avg_points.append(farthest_point)
             i += 1
-        # Show in a window
+            # Show in a window
+            total_x = 0
+            avg_x = 0
+            total_y = 0
+            avg_y = 0
+            if (len(avg_points) > 100):
+                for pt in avg_points:
+                    total_x += pt[0]
+                    total_y += pt[1]
+                avg_x = total_x / len(avg_points)
+                avg_y = total_y / len(avg_points)
+                print("found point: " + str(avg_x) + ", " + str(avg_y))
+                return (avg_x, avg_y)
         cv2.imshow('Contours', skin_new)
-        total_x = 0
-        avg_x = 0
-        total_y = 0
-        avg_y = 0
-        if (len(avg_points) > 50):
-            for pt in avg_points:
-                total_x += pt[0]
-                total_y += pt[1]
-            avg_x = total_x / len(avg_points)
-            avg_y = total_y / len(avg_points)
-            print("found point: " + str(avg_x) + ", " + str(avg_y))
-            return (avg_x, avg_y)
 
         # if the 'q' key is pressed, stop the loop
         if cv2.waitKey(5000) & 0xFF == ord("q"):

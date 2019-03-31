@@ -197,7 +197,23 @@ class Handler:
         print("board successfully reset.")
         print("current turn: player 1")
         foundPoint = camera.detectGesture()
-        print(str(board_fields))
+        # print(str(board_fields))
+        dist_min = 10000.0
+        closest_point = ()
+        for points in board_fields:
+            # print(str(board_fields[points]))
+            # loop over all points and find closest
+            print(str(camera.getDistance(
+                board_fields[points][0], board_fields[points][1], foundPoint[0], foundPoint[1])))
+
+            if (camera.getDistance(board_fields[points][0], board_fields[points][1], foundPoint[0], foundPoint[1]) < dist_min):
+                closest_point = (points, board_fields[points])
+                print("found lower distance: " + str(closest_point) + " with distance: " + str(
+                    camera.getDistance(board_fields[points][0], board_fields[points][1], foundPoint[0], foundPoint[1])))
+
+                dist_min = camera.getDistance(
+                    board_fields[points][0], board_fields[points][1], foundPoint[0], foundPoint[1])
+        print("Found field is: " + str(closest_point))
         # get move
         # perform move
         # update Board (determine winner, pieces to remove, damen)
