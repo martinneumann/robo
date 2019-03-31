@@ -13,6 +13,12 @@ gi.require_version('Gtk', '3.0')
 edges = []
 board_fields = {}
 
+current_player = 1  # player 1 or 2
+current_piece = []  # position of current piece
+current_target = []  # position of target move
+current_move = []  # move [piece_position, move_type]
+validation_move = ""  # move for validation
+
 
 class communicationManager():
     receivedMessage = ""    # response received from robot
@@ -190,12 +196,8 @@ class Handler:
         comManager._disconnect()
         Gtk.main_quit()
 
-    def newGameHuman(self, *args):
-        # reset board
-        # start game
-        print("resetting board...")
-        print("board successfully reset.")
-        print("current turn: player 1")
+    def getMove(self, *args):
+
         foundPoint = camera.detectGesture()
         # print(str(board_fields))
         dist_min = 10000.0
@@ -213,11 +215,49 @@ class Handler:
 
                 dist_min = camera.getDistance(
                     board_fields[points][0], board_fields[points][1], foundPoint[0], foundPoint[1])
-        print("Found field is: " + str(closest_point))
-        # get move
-        # perform move
-        # update Board (determine winner, pieces to remove, damen)
-        # change player -> jmp get move
+            print("Found field is: " + str(closest_point) + "for piece.")
+            current_piece = closest_point
+            print("Getting target.")
+            foundPoint = camera.detectGesture()
+            for points in board_fields:
+                # print(str(board_fields[points]))
+                # loop over all points and find closest
+                print(str(camera.getDistance(
+                    board_fields[points][0], board_fields[points][1], foundPoint[0], foundPoint[1])))
+
+                if (camera.getDistance(board_fields[points][0], board_fields[points][1], foundPoint[0], foundPoint[1]) < dist_min):
+                    closest_point = (points, board_fields[points])
+                    print("found lower distance: " + str(closest_point) + " with distance: " + str(
+                        camera.getDistance(board_fields[points][0], board_fields[points][1], foundPoint[0], foundPoint[1])))
+
+                    dist_min = camera.getDistance(
+                        board_fields[points][0], board_fields[points][1], foundPoint[0], foundPoint[1])
+            print("Found field is: " + str(closest_point) + " for target.")
+            current_target = closest_point
+
+            current_move = [["1" + str(current_piece[0])], ["2" + str(current_piece[0])],
+                            ["1" + str(current_target[0])], ["3" + str(current_target[0])]]
+            print("Current move is: " + str(current_move))
+            validation_move = str(current_piece + current_target)
+            self.performMove()
+            print("move finished")
+            raw_input()
+
+            # move = ["1C1", "2C1", "1D2", "3D2"]
+
+            # get move
+            # perform move
+            # update Board (determine winner, pieces to remove, damen)
+            # change player -> jmp get move
+
+    def newGameHuman(self, *args):
+        # reset board
+        # start game
+        print("resetting board...")
+        print("board successfully reset.")
+        print("current turn: player 1")
+        current_player = 1
+        self.getMove()
 
     def newGameAI(self, *args):
         # reset board
@@ -258,14 +298,21 @@ class Handler:
         print("setup ready.")
 
     def performMove(self, *args):
-        print("performing move...")
+        print("performing move " + str(current_move))
 
         # test code
         # move = ["1C1", "2C1", "1D2", "3D2"]
-        b = rules.valid_move("A1", "C2 B2")
-        print(str(b))
+        # b = rules.valid_move("A1", "C2 B2")
+        # print(str(b))
         # end test code
         # comManager.sendMove(move)
+
+        # change player
+    def changePlayer(self, *args):
+        if self.current_player == 1:
+            self.current_player = 2
+        else:
+            self.current_player = 1
 
 
 class game():

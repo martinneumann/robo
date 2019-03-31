@@ -99,15 +99,11 @@ def calibrate():
                     cv2.imshow('robot view', img)
                 if cv2.waitKey(50) & 0xFF == ord('q'):
                     break
-                input_ = raw_input(
-                    "Is this calibration correct? Press Y/N to continue.")
-                if (input_ == "y"):
-                    cap.release()
-                    cv2.destroyAllWindows()
-                    print str(av_edge[0])
-                    return av_edge
-                else:
-                    edge_buf = []
+
+                cap.release()
+                cv2.destroyAllWindows()
+                print str(av_edge[0])
+                return av_edge
 
             # Display the resulting frame
             cv2.imshow('robot view', img)
@@ -271,15 +267,16 @@ def detectGesture():
             cv2.circle(skin_new, (cX, cY), 5, (255, 255, 255), 1)
 
             for point in defectsarray:
-                print("in loop for defects")
                 # calculate farthesst point
-                if getDistance(cX, cY, point[0], point[1]) > max_dist:
+                if (getDistance(cX, cY, point[0], point[1]) > max_dist) and (point[0] > 40) and (point[0] < 600) and (point[1] < 440) and (point[1] > 40):
                     max_dist = getDistance(cX, cY, point[0], point[1])
                     farthest_point = point
                     print("new farthest point: " + str(point) +
                           " with distance: " + str(max_dist))
-            cv2.circle(
-                skin_new, (farthest_point[0], farthest_point[1]), 20, (255, 255, 0), 1)
+                    cv2.circle(
+                        skin_new, (farthest_point[0], farthest_point[1]), 20, (255, 255, 0), 1)
+                    cv2.putText(skin_new, str(farthest_point), (farthest_point[0] + 10, farthest_point[1] + 10),
+                                cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
 
             # rect = cv2.minAreaRect(cnt)
 
@@ -300,15 +297,18 @@ def detectGesture():
             if (vx > 0 and vy > 0 and x > 0 and y > 0):
                 skin_new = cv2.line(skin_new, (cols-1, righty),
                                     (0, lefty), color, 2)
+            
                                     '''
-            avg_points.append(farthest_point)
+            if (farthest_point != None) and (len(farthest_point) > 0):
+                avg_points.append(farthest_point)
+            print("average points" + str(avg_points))
             i += 1
             # Show in a window
             total_x = 0
             avg_x = 0
             total_y = 0
             avg_y = 0
-            if (len(avg_points) > 100):
+            if (len(avg_points) > 50):
                 for pt in avg_points:
                     total_x += pt[0]
                     total_y += pt[1]
