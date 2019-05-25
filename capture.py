@@ -1,12 +1,15 @@
 #!/usr/bin/env python
 
 import camera
+import numpy as np
+import cv2
 import game as rules
 from gi.repository import Gtk
 import gi
 import importlib
 import socket
 import sys
+import time
 from operator import itemgetter
 gi.require_version('Gtk', '3.0')
 
@@ -19,6 +22,15 @@ current_target = []  # position of target move
 current_move = []  # move [piece_position, move_type]
 validation_move = ""  # move for validation
 lbl_player = None
+lbl_moves = None
+position = None
+player_has_won = False
+game_type = "none"
+eat_move = "00"
+number_of_beaten_pieces = 0
+current_garbage = 0
+letters = ['A', 'B', 'C', 'D', 'E', 'F']
+garbage = ['X', 'Y', 'V', 'W']
 
 
 class communicationManager():
@@ -185,6 +197,7 @@ class state_machine(object):
 class Handler:
     # handlers for gui events
     current_player = 1
+
     def connectToServer(self, button):
         # connects to the robot
         comManager._connect()
@@ -199,128 +212,232 @@ class Handler:
         Gtk.main_quit()
 
     def getMove(self, *args):
+        global position
+        global game_type
+        global eat_move
+        global letters
+        global garbage
+        global number_of_beaten_pieces
+        global current_garbage
 
-        foundPoint = camera.detectGesture()
-        # print(str(board_fields))
-        dist_min = 10000.0
-        closest_point = ()
-        for points in board_fields:
-            # print(str(board_fields[points]))
-            # loop over all points and find closest
-            print(str(camera.getDistance(
-                board_fields[points][0], board_fields[points][1], foundPoint[0], foundPoint[1])))
+        turn_ended = False
 
-            if (camera.getDistance(board_fields[points][0], board_fields[points][1], foundPoint[0], foundPoint[1]) < dist_min):
-                closest_point = (points, board_fields[points])
-                print("found lower distance: " + str(closest_point) + " with distance: " + str(
-                    camera.getDistance(board_fields[points][0], board_fields[points][1], foundPoint[0], foundPoint[1])))
+        while(turn_ended == False and not rules.black_win(position) and not rules.white_win(position)):
+            if current_player == 2 and game_type == "ai":  # player is AI
+                movestring = rules.make_move(position)
+                current_move = [["1" + movestring[0] + movestring[1]], ["2" + movestring[0] + movestring[1]],
+                                ["1" + movestring[3] + movestring[4]], ["3" + movestring[3] + movestring[4]]]
 
-                dist_min = camera.getDistance(
-                    board_fields[points][0], board_fields[points][1], foundPoint[0], foundPoint[1])
-            print("Found field is: " + str(closest_point) + "for piece.")
-            current_piece = closest_point
-            print("Getting target.")
-            foundPoint = camera.detectGesture()
-            for points in board_fields:
-                # print(str(board_fields[points]))
-                # loop over all points and find closest
-                print(str(camera.getDistance(
-                    board_fields[points][0], board_fields[points][1], foundPoint[0], foundPoint[1])))
+            else:
+                foundPoint = camera.detectGesture()
+                # x = "0"
+                # print("enter piece position: ")
+                # x = raw_input()
+                # foundPoint = board_fields[x]
+                # print(str(board_fields))
+                dist_min = 10000.0
+                closest_point = ()
+                closest_point_2 = ()
+                eat_move = "00"
 
-                if (camera.getDistance(board_fields[points][0], board_fields[points][1], foundPoint[0], foundPoint[1]) < dist_min):
-                    closest_point = (points, board_fields[points])
-                    print("found lower distance: " + str(closest_point) + " with distance: " + str(
-                        camera.getDistance(board_fields[points][0], board_fields[points][1], foundPoint[0], foundPoint[1])))
+                for points in board_fields:
+                    print("checking " + str(points) +
+                          ": " + str(board_fields[points]))
+                    # loop over all points and find closest
+                    # print(str(camera.getDistance(
+                    #    board_fields[points][0], board_fields[points][1], foundPoint[0], foundPoint[1])))
 
-                    dist_min = camera.getDistance(
-                        board_fields[points][0], board_fields[points][1], foundPoint[0], foundPoint[1])
-            print("Found field is: " + str(closest_point) + " for target.")
-            current_target = closest_point
+                    if (camera.getDistance(board_fields[points][0], board_fields[points][1], foundPoint[0], foundPoint[1]) < dist_min):
+                        closest_point = (points, board_fields[points])
+                        print("found lower distance: " + str(closest_point) + " with distance: " + str(
+                            camera.getDistance(board_fields[points][0], board_fields[points][1], foundPoint[0], foundPoint[1])))
 
-            current_move = [["1" + str(current_piece[0])], ["2" + str(current_piece[0])],
-                            ["1" + str(current_target[0])], ["3" + str(current_target[0])]]
-            print("Current move is: " + str(current_move))
-            validation_move = str(current_piece + current_target)
-            self.performMove()
-            print("move finished")
-            raw_input()  # @TODO: replace with button function
+                        dist_min = camera.getDistance(
+                            board_fields[points][0], board_fields[points][1], foundPoint[0], foundPoint[1])
+                print("Found field is: " + str(closest_point) + " for piece.")
+                print("Please point to the target now...")
+                time.sleep(3)
+                # raw_input()
+                current_piece = closest_point
+                movestring = str(current_piece[0]) + " => ..."
+                # lbl_moves.set_text(movestring)
+                print("Getting target.")
+                dist_min = 100000
 
-            # move = ["1C1", "2C1", "1D2", "3D2"]
+                # x = "0"
+                # print("enter target position: ")
+                # x = raw_input()
+                # foundPoint = board_fields[x]
+                foundPoint = camera.detectGesture()
+                for points in board_fields:
+                    # print(str(board_fields[points]))
+                    # loop over all points and find closest
+                    # print(str(camera.getDistance(
+                    #     board_fields[points][0], board_fields[points][1], foundPoint[0], foundPoint[1])))
+                    if (camera.getDistance(board_fields[points][0], board_fields[points][1], foundPoint[0], foundPoint[1]) < dist_min):
+                        closest_point_2 = (points, board_fields[points])
+                        # print("found lower distance: " + str(closest_point) + " with distance: " + str(
+                        #    camera.getDistance(board_fields[points][0], board_fields[points][1], foundPoint[0], foundPoint[1])))
 
-            # get move
-            # perform move
-            # update Board (determine winner, pieces to remove, damen)
-            # change player -> jmp get move
+                        dist_min = camera.getDistance(
+                            board_fields[points][0], board_fields[points][1], foundPoint[0], foundPoint[1])
+                current_target = closest_point_2
+                print("Found field is: " + str(current_target) + " for target.")
+
+                current_move = [["1" + str(current_piece[0])], ["2" + str(current_piece[0])],
+                                ["1" + str(current_target[0])], ["3" + str(current_target[0])]]
+                print("Current move is: " + str(current_move))
+                # move_str = str(current_move[0]) + str(current_target[0])
+                # validation_move = str(current_piece + current_target)
+                movestring = str(current_piece[0]) + \
+                    " " + str(current_target[0])
+                # print(str(position))
+                # lbl_moves.set_text(movestring)
+                print("\n *** TEST *** \n")
+                if (rules.Valid_move(position, movestring) == False) or (rules.verif_collor(position, movestring, "white") == False):
+                    print(
+                        "Move is invalid, please try again! Press any key to start new detection.")
+                    # raw_input()
+                    time.sleep(3)
+                    return
+                print("Move is valid.")
+
+            if (rules.food_pos(movestring) != "00"):
+                print("Player has to beat a piece!")
+                eat_move = rules.food_pos(movestring)
+
+            print("Food position: " + str(rules.food_pos(movestring)))
+            position = rules.new_position(position, movestring)
+            print("New position: " + str(position))
+
+            turn_ended = rules.turn_endet(position)
+            print("Player endet turn: " +
+                  str(rules.turn_endet(position)))
+            self.performMove(current_move)
+            print("Detection finished.")
+            position = rules.new_position(position, movestring)
+            if (eat_move != "00"):
+                print("a piece was beaten, performing removal...")
+                current_move = [["1" + eat_move], ["2" +
+                                                   eat_move], ["1" + letters[number_of_beaten_pieces] + garbage[current_garbage]], ["3" + letters[number_of_beaten_pieces] + garbage[current_garbage]]]
+                number_of_beaten_pieces += 1
+                if (letters[number_of_beaten_pieces] == 'F'):
+                    number_of_beaten_pieces = 0
+                    current_garbage += 1
+
+                self.performMove(current_move)
+
+            eat_move = "00"
+        rules.print_position(position)
+        self.changePlayer()
 
     def newGameHuman(self, *args):
+        global game_type
+        game_type = "human"
+        global position
+        global player_has_won
         # reset board
         # start game
         print("resetting board...")
+        position = rules.restart_game()
+
         print("board successfully reset.")
         print("current turn: player 1")
         current_player = 1
-        self.getMove()
+        while (player_has_won == False):
+            if (rules.white_win(position)):
+                print("White has won!")
+            player_has_won = rules.white_win(position)
+
+            if (rules.black_win(position)):
+                print("Black has won!")
+            player_has_won = rules.black_win(position)
+            if (player_has_won == False):
+                self.getMove()
+            else:
+                print("The game has ended.")
+        return
 
     def newGameAI(self, *args):
+        global game_type
+        game_type = "ai"
         # reset board
         # start game (human)
         print("resetting board...")
+        global position
+        global player_has_won
+        # reset board
+        # start game
+        print("resetting board...")
+        position = rules.restart_game()
+
+        print("board successfully reset.")
+        print("current turn: player 1")
+        current_player = 1
+        while (player_has_won == False):
+            if (rules.white_win(position)):
+                print("White has won!")
+            player_has_won = rules.white_win(position)
+
+            if (rules.black_win(position)):
+                print("Black has won!")
+            player_has_won = rules.black_win(position)
+            if (player_has_won == False):
+                self.getMove()
+            else:
+                print("The game has ended.")
+        return
 
     def startCalibration(self, *args):
-        edges = camera.calibrate()
+        global board_fields
+        board_fields, img = camera.calibrate()
 
         # sorted(edges)
         # edges.sort(key=itemgetter(1))
-        print("successfully calibrated.")
-        print("board edges are: " +
-              str(edges[0]) + ", " + str(edges[2]) + ", " + str(edges[4]) + ", " + str(edges[6]))
-        print("calculating fields...")
-        x_dist = (edges[0][0] - edges[2][0])/10
-        print("x dist: " + str(x_dist))
-        y_dist = (edges[0][1] - edges[4][1])/10
-        print("y dist: " + str(y_dist))
-        letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
-        numbers = ['1', '2', '3', '4', '5', '6', '7', '8']
-        x_val = edges[2][0] + x_dist  # first x value
-        y_val = edges[6][1] + y_dist  # first y value
-        print("x val: " + str(x_val) + ", y val: " + str(y_val))
-        field_edges = []
-        for let in letters:
-            # A, B, C, ...
-            for num in numbers:
-                # create fields
-                # 1, 2, 3, ...
-                tmp = str(let + num)
-                board_fields[tmp] = [x_val, y_val]
-                x_val = x_val + x_dist
-            y_val += y_dist
-            x_val = edges[2][0] + x_dist  # first x value
 
         print("board: " + str(board_fields))
+
+        cap_ = cv2.VideoCapture(-1)
+        _ret_, frame_ = cap_.read()
+        for key, value in board_fields.iteritems():
+            cv2.circle(frame_, value, 3, (100, 100, 100))
+            cv2.putText(frame_, key, value, cv2.FONT_HERSHEY_SIMPLEX,
+                        1, (100, 100, 100))
+
+        both = np.hstack((frame_, img))
+
+        cv2.imshow('received points', both)
+
         print("setup ready.")
 
-    def performMove(self, *args):
-        print("performing move " + str(current_move))
-
+    def performMove(move, test):
+        print(str(test))
+        print("performing move " + str(move))
         # test code
-        # move = ["1C1", "2C1", "1D2", "3D2"]
+        move = test
+        flat_list = [item for sublist in move for item in sublist]
+        print(str(flat_list))
+        # move = ["1A3", "2A3"]
         # b = rules.valid_move("A1", "C2 B2")
         # print(str(b))
         # end test code
-        # comManager.sendMove(move)
+        comManager.sendMove(flat_list)     # @ACTIVATE
+        lbl_moves.set_text = ""
 
         # change player
     def changePlayer(self, *args):
+        global position
         print("changing player: " + str(lbl_player))
+        time.sleep(3)
         global current_player
         global lbl_player
+        rules.print_position(position)
         if current_player == 1:
             current_player = 2
             lbl_player.set_text("Player 2")
         else:
             current_player = 1
             lbl_player.set_text("Player 1")
-
 
 
 class game():
@@ -336,10 +453,11 @@ class game():
     # player changes to player 2
     # select piece - select position - [...] - confirm move
 
-    def getMoveToPoint():
-        # finds the next move within this move chain
-        print("getting move")
-        moves.append("1" + camera.detectGesture())
+
+def getMoveToPoint():
+    # finds the next move within this move chain
+    print("getting move")
+    moves.append("1" + camera.detectGesture())
 
 
 builder = Gtk.Builder()
@@ -351,6 +469,9 @@ builder = Gtk.Builder()
 
 def main():
     global lbl_player
+    global lbl_moves
+    global position
+    global current_move
     win = gui()
     builder.add_from_file("gui.glade")
     window = builder.get_object("win")
@@ -358,6 +479,8 @@ def main():
     # win.connect("destroy", Gtk.main_quit)
     builder.connect_signals(Handler())
     lbl_player = builder.get_object("lbl_player")
+    lbl_moves = builder.get_object("lbl_moves")
+
     print(str(lbl_player))
     Gtk.main()
 

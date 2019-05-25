@@ -4,6 +4,77 @@ from matplotlib import pyplot as plt
 import struct
 import random as rng
 import math
+import operator
+
+
+def draw_hand_rect(self, frame):
+    rows, cols, _ = frame.shape
+
+    self.hand_row_nw = np.array([6*rows/20, 6*rows/20, 6*rows/20, 10 *
+                                rows/20, 10*rows/20, 10*rows/20, 14*rows/20, 14*rows/20, 14*rows/20])
+
+    self.hand_col_nw = np.array([9*cols/20, 10*cols/20, 11*cols/20, 9 *
+                                cols/20, 10*cols/20, 11*cols/20, 9*cols/20, 10*cols/20, 11*cols/20])
+
+    self.hand_row_se = self.hand_row_nw + 10
+    self.hand_col_se = self.hand_col_nw + 10
+
+    size = self.hand_row_nw.size
+    for i in xrange(size):
+        cv2.rectangle(frame, (self.hand_col_nw[i], self.hand_row_nw[i]), (
+            self.hand_col_se[i], self.hand_row_se[i]), (0, 255, 0), 1)
+        black = np.zeros(frame.shape, dtype=frame.dtype)
+        frame_final = np.vstack([black, frame])
+        return frame_final
+
+
+def set_hand_hist(self, frame):
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    roi = np.zeros([90, 10, 3], dtype=hsv.dtype)
+
+    size = self.hand_row_nw.size
+    for i in xrange(size):
+        roi[i*10:i*10+10, 0:10] = hsv[self.hand_row_nw[i]
+            :self.hand_row_nw[i]+10, self.hand_col_nw[i]:self.hand_col_nw[i]+10]
+
+    self.hand_hist = cv2.calcHist(
+        [roi], [0, 1], None, [180, 256], [0, 180, 0, 256])
+    cv2.normalize(self.hand_hist, self.hand_hist, 0, 255, cv2.NORM_MINMAX)
+
+
+def apply_hist_mask(frame, hist):
+    hsv = cv2.cvtColor(frame, cv2.COLOR_BGR2HSV)
+    dst = cv2.calcBackProject([hsv], [0, 1], hist, [0, 180, 0, 256], 1)
+
+    disc = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (11, 11))
+    cv2.filter2D(dst, -1, disc, dst)
+
+    ret, thresh = cv2.threshold(dst, 100, 255, 0)
+    thresh = cv2.merge((thresh, thresh, thresh))
+
+    cv2.GaussianBlur(dst, (3, 3), 0, dst)
+
+    res = cv2.bitwise_and(frame, thresh)
+    return res
+
+
+def draw_final(self, frame, hand_detection):
+    hand_masked = image_analysis.apply_hist_mask(
+        frame, hand_detection.hand_hist)
+
+    contours = image_analysis.contours(hand_masked)
+    if contours is not None and len(contours) > 0:
+        max_contour = image_analysis.max_contour(contours)
+        hull = image_analysis.hull(max_contour)
+        centroid = image_analysis.centroid(max_contour)
+        defects = image_analysis.defects(max_contour)
+
+        if centroid is not None and defects is not None and len(defects) > 0:
+            farthest_point = image_analysis.farthest_point(
+                defects, max_contour, centroid)
+
+            if farthest_point is not None:
+                self.plot_farthest_point(frame, farthest_point)
 
 
 def calibrate():
@@ -12,15 +83,18 @@ def calibrate():
 
     # four points that describe the edges of the board
     # indicated by circles that are detected
-    board_edges = np.array([[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [
-                           0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]])
+
     cons_edges = np.array([[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [
-                          0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]])
+                          0, 0], [0, 0]])
     edge_buf = []
+
+    board_fields = {}
 
     # index for number of runs
     a = 1
     while(1):
+        board_edges = np.array([[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [
+                               0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0]])
         # Capture frame-by-frame
         _ret, frame = cap.read()
 
@@ -45,9 +119,9 @@ def calibrate():
             ret, thresh = cv2.threshold(edged, 200, 255, 0)
             thresh = cv2.dilate(thresh, None, iterations=1)
             thresh = cv2.erode(thresh, None, iterations=1)
-            testimg, contours, h = cv2.findContours(thresh, 1, 2)
+            contours, h = cv2.findContours(thresh, 1, 2)
 
-            o = 0
+            o = 0  # valid shapes in this run
             i = 0
             print("Shapes found: " + str(len(contours)))
             for cnt in contours:
@@ -60,6 +134,7 @@ def calibrate():
                     if (len(M) > 4):
                         cX = int(M["m10"] / M["m00"])
                         cY = int(M["m01"] / M["m00"])
+                        print("found point: " + str(cX) + "," + str(cY))
                         if (len(edge_buf) < 12):
                             cv2.drawContours(img, [cnt], 0, (0, 255, 255), -1)
                             cv2.putText(frame, str(cX) + ", " + str(cY), (cX - 20, cY - 20),
@@ -68,6 +143,12 @@ def calibrate():
                         board_edges[i] = [cX, cY]
                         i = i + 1
 
+            print("board_edges: " + str(board_edges))
+
+            print("after cleaning: " + str(board_edges))
+            if (len(board_edges) < 4):
+                print("too few edges found, continuing")
+                continue
             o = o/2
             # if a == 1:
             # cons_edges = board_edges
@@ -78,9 +159,11 @@ def calibrate():
                     edge = [(edge[0] + board_edges[index][0])/2,
                             (edge[1] + board_edges[index][1])/2]
                     cons_edges[index] = edge
+                board_edges = [board_edges[0], board_edges[2],
+                               board_edges[4], board_edges[6]]
                 edge_buf.append(board_edges)
                 print("Valid runs: " + str(a))
-                print("Valid shapes found: " + str(o))
+                print("Valid shapes found: " + str(edge_buf))
                 a = a+1
             else:
                 print("Number of valid shapes found: " +
@@ -89,7 +172,7 @@ def calibrate():
             if (len(edge_buf) == 12):
                 print("found edges: " + str(board_edges))
                 av_edge = np.average(edge_buf, axis=0)
-                print(av_edge)
+                # print(av_edge)
                 # print("Board edges are: \n" + str(np.average(edge_buf, axis=0)))
                 for elem in av_edge:
                     cv2.circle(img, (int(elem[0]), int(
@@ -97,20 +180,155 @@ def calibrate():
                     cv2.putText(img, (str(elem[0]) + ", " + str(elem[1])), (int(elem[0]) - 20, int(elem[1]) - 20),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
                     cv2.imshow('robot view', img)
+
+                # put board
+                edges = []
+                edges = av_edge
+
+                # print(str(edges))
+
+                edges = sorted(edges, key=lambda x: x[0])
+
+                # print("edegs: " + str(edges))
+
+                print("successfully calibrated.")
+                print("board edges are: " +
+                      str(edges[0]) + ", " + str(edges[1]) + ", " + str(edges[2]) + ", " + str(edges[3]))
+                print("sorting edges...")
+
+                # sort points
+                # 1. sort by x value
+                sorted_edges = []
+                lowest_x = [800, 800]
+                k = 0
+                for point in edges:
+                    if (len(sorted_edges) > 0):
+                        for pt in sorted_edges:
+                            if point[0] < pt[0]:
+                                sorted_edges.insert(k, point)
+                                k += 1
+                                break
+                            if (k == len(sorted_edges)):
+                                sorted_edges.append(point)
+                                k += 1
+                                break
+                    else:
+                        sorted_edges.append(point)
+                        k += 1
+                print("after sorting: " + str(sorted_edges))
+                if (sorted_edges[0][1] > sorted_edges[1][1]):
+                    # change positions if y of 1 is larger than y of 0
+                    tmp_edge = sorted_edges[0]
+                    sorted_edges[0] = sorted_edges[1]
+                    sorted_edges[1] = tmp_edge
+
+                if (sorted_edges[2][1] > sorted_edges[3][1]):
+                    tmp_edge = sorted_edges[2]
+                    sorted_edges[2] = sorted_edges[3]
+                    sorted_edges[3] = tmp_edge
+
+                print("After swapping: " + str(sorted_edges))
+                edges = sorted_edges
+
+                print("calculating fields...")
+
+                dx = (edges[2][0] - edges[0][0]) / 10
+                dx2 = (edges[3][0] - edges[1][0]) / 10
+                dy = (edges[2][1] - edges[3][1]) / 10
+                dy2 = (edges[0][1] - edges[1][1]) / 10
+
+                # print("distorsion: " + str(dx1) + ", " +
+                #      str(dx2) + "; " + str(dy1) + ", " + str(dy2))
+                x_dist = (edges[3][0] - edges[2][0])/10
+                print("x dist: " + str(x_dist))
+                y_dist = (edges[3][1] - edges[2][1])/10
+                print("y dist: " + str(y_dist))
+
+                letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+                numbers = ['1', '2', '3', '4', '5', '6', '7', '8']
+                y_val = edges[2][1]   # first y value
+                x_val = edges[2][0]   # first x value
+
+                # first row
+                # top_row
+                print("x val: " + str(x_val) + ", y val: " + str(y_val))
+                field_edges = []
+
+                # top row
+                top_row = getEightPointsBetween(img,
+                                                edges[2][0], edges[2][1], edges[0][0], edges[0][1])
+
+                for element in top_row:
+                    element = [int(element[0]), int(element[1])]
+                    print(str(element))
+                print("top row: " + str(top_row))
+
+                bottom_row = getEightPointsBetween(img,
+                                                   edges[3][0], edges[3][1], edges[1][0], edges[1][1])
+
+                # bottom row
+                for element in bottom_row:
+                    element = [int(element[0]), int(element[1])]
+                    print(str(element))
+                print("bottom row: " + str(bottom_row))
+
+                fields = []
+                # fields in between
+                for i in range(len(top_row)):
+                    # get circles between rows
+                    tmplist = getEightPointsBetween(img,
+                                                    top_row[i][0], top_row[i][1], bottom_row[i][0], bottom_row[i][1])
+
+                    # convert circles to fields with key
+                    for x in range(len(tmplist)):
+                        tmp = str(letters[i] + numbers[x])
+                        board_fields[tmp] = tmplist[x]
+
+                print("board fields are: " + str(board_fields))
+
                 if cv2.waitKey(50) & 0xFF == ord('q'):
                     break
 
                 cap.release()
                 cv2.destroyAllWindows()
-                print str(av_edge[0])
-                return av_edge
+                # print str(av_edge[0])
+                return board_fields, img
 
             # Display the resulting frame
-            cv2.imshow('robot view', img)
-            if cv2.waitKey(1000) & 0xFF == ord('q'):
+            if cv2.waitKey(100) & 0xFF == ord('q'):
                 break
+            cv2.imshow('robot view', img)
+
     cap.release()
     cv2.destroyAllWindows()
+
+
+def getEightPointsBetween(img, x1, y1, x2, y2):
+    print("getting points between: " + str(x1) + "," +
+          str(y1) + " and " + str(x2) + "," + str(y2))
+    x_dist = (x2 - x1) / 9
+    y_dist = (y2 - y1) / 9
+    x = x1 + x_dist
+    y = y1 + y_dist
+    points = []
+    for i in range(8):
+        x = int(x)
+        y = int(y)
+        points.append((x, y))
+        cv2.circle(img, (x, y),
+                   5, (255, 255, 0))
+        x += x_dist
+        y += y_dist
+
+    return points
+
+
+def addPoint(x1, y1, x2, y2):
+    return [x1 + x2, y1 + y2]
+
+
+def subtractPoint(x1, y1, x2, y2):
+    return [x2 - x1, y2 - y1]
 
 
 def getDistance(x1, y1, x2, y2):
@@ -124,10 +342,15 @@ def detectGesture():
     w = 640
     h = 480
 
+    average_x = 0
+    average_y = 0
+    variance_x = 1000
+    variance_y = 1000
+
     avg_points = []
     avg_point = [320, 240]
 
-    lower = np.array([0, 48, 80], dtype="uint8")
+    lower = np.array([0, 20, 10], dtype="uint8")
     upper = np.array([20, 255, 255], dtype="uint8")
    # keep looping over the frames in the video
     while True:
@@ -146,18 +369,19 @@ def detectGesture():
         # apply a series of erosions and dilations to the mask
         # using an elliptical kernel
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (11, 11))
-        skinMask = cv2.erode(skinMask, kernel, iterations=2)
-        skinMask = cv2.dilate(skinMask, kernel, iterations=2)
+        # skinMask = cv2.erode(skinMask, kernel, iterations=2)
+        # skinMask = cv2.dilate(skinMask, kernel, iterations=1)
+        skinMask = cv2.morphologyEx(skinMask, cv2.MORPH_OPEN, kernel)
 
         # blur the mask to help remove noise, then apply the
         # mask to the frame
         skinMask = cv2.GaussianBlur(skinMask, (3, 3), 0)
         skin = cv2.bitwise_and(frame, frame, mask=skinMask)
-
+        cv2.imshow("detection", np.hstack([frame, skin]))
         skin_new = cv2.Canny(skin, 100,  255)
-        skin_new = cv2.dilate(skin_new, None, iterations=3)
-        skin_new = cv2.erode(skin_new, None, iterations=3)
-        _, contours, _ = cv2.findContours(
+        skin_new = cv2.dilate(skin_new, None, iterations=1)
+        # skin_new = cv2.erode(skin_new, None, iterations=1)
+        contours, _ = cv2.findContours(
             skin_new, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
         # show the skin in the image along with the mask
@@ -193,43 +417,11 @@ def detectGesture():
         # center, radius = cv2.minEnclosingCircle(cnt)
         hull = cv2.convexHull(cnt, returnPoints=False)
 
-        # print("tri " + str(triangle[0][0]) +
-        #      str(triangle[1][0]) + str(triangle[2][0]))
-        # pt1 = (triangle[0][0][0], triangle[0][0][1])
-        # pt2 = (triangle[1][0][0], triangle[1][0][1])
-        # pt3 = (triangle[2][0][0], triangle[2][0][1])
-
-        # cv2.line(skin_new, pt1, pt2, color)
-        # cv2.line(skin_new, pt2, pt3, color)
-        # cv2.line(skin_new, pt3, pt1, color)
-        '''
-        dist1 = getDistance(pt1[0], pt1[1], pt2[0], pt2[1])
-        dist2 = getDistance(pt2[0], pt2[1], pt3[0], pt3[1])
-        dist3 = getDistance(pt3[0], pt3[1], pt1[0], pt1[1])
-        point = [0, 0]
-        if (dist1 < dist2) and (dist1 < dist3):
-            # dist 1 is smallest -> pt3
-            point = pt3
-        if (dist2 < dist1) and (dist2 < dist3):
-            point = pt1
-        if (dist3 < dist1) and (dist3 < dist2):
-            point = pt2
-        avg_points.append(point)
-        '''
-        # cv2.putText(skin_new, str(point), (point[0], point[1]),
-        #            cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
-        # print("distances: " + str(dist1) + ", " +
-        #      str(dist2) + ", " + str(dist3))
-
-        # cv2.line(skin_new, triangle[1], triangle[2], color)
-        # cv2.line(skin_new, triangle[2], triangle[0], color)
-        # cv2.circle(skin_new, (int(center[0]), int(
-        #    center[1])), int(radius), color, 2)
         if hull is not None:
             defects = cv2.convexityDefects(cnt, hull)
-            print("hull: " + str(hull))
-            print("defects: " + str(defects))
-            print(str(defects[2][0]))
+            # print("hull: " + str(hull))
+            # print("defects: " + str(defects))
+            # print(str(defects[2][0]))
             # cv2.putText(skin_new, str(defects[2][0]), (int(defects[2][0]), int(
             #    defects[2][1])),
             #    cv2.FONT_HERSHEY_SIMPLEX, 1, color, 2)
@@ -253,62 +445,94 @@ def detectGesture():
                 end = tuple(cnt[e][0])
                 far = tuple(cnt[f][0])
                 defectsarray.append([start[0], start[1]])
-            print(str(defectsarray))
+            # print(str(defectsarray))
 
             max_dist = 0
             farthest_point = []
             M = cv2.moments(np.int32(defectsarray))
 
             # get centroid
-            cX = int(M["m10"] / M["m00"])
-            cY = int(M["m01"] / M["m00"])
+            if (M["m00"] != 0):
+                cX = int(M["m10"] / M["m00"])
+                cY = int(M["m01"] / M["m00"])
+            else:
+                cX = 0
+                cY = 0  # @TODO: check
             cv2.putText(skin_new, "centroid", (cX - 25, cY - 25),
                         cv2.FONT_HERSHEY_PLAIN, 1, color)
-            cv2.circle(skin_new, (cX, cY), 5, (255, 255, 255), 1)
+            cv2.circle(skin_new, (cX, cY), 5, (100, 255, 255), 1)
 
             for point in defectsarray:
                 # calculate farthesst point
                 if (getDistance(cX, cY, point[0], point[1]) > max_dist) and (point[0] > 40) and (point[0] < 600) and (point[1] < 440) and (point[1] > 40):
                     max_dist = getDistance(cX, cY, point[0], point[1])
                     farthest_point = point
-                    print("new farthest point: " + str(point) +
-                          " with distance: " + str(max_dist))
+                    # print("new farthest point: " + str(point) +
+                    #      " with distance: " + str(max_dist))
                     cv2.circle(
                         skin_new, (farthest_point[0], farthest_point[1]), 20, (255, 255, 0), 1)
-                    cv2.putText(skin_new, str(farthest_point), (farthest_point[0] + 10, farthest_point[1] + 10),
+                    cv2.putText(skin_new, "farthest point: " + str(farthest_point), (farthest_point[0] + 10, farthest_point[1] + 10),
                                 cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
 
-            # rect = cv2.minAreaRect(cnt)
-
-            # box = cv2.boxPoints(rect)
-            # box = np.int0(box)
-            # cv2.drawContours(skin_new, [box], 0, color, 2)
-            '''
-            ellipse = cv2.fitEllipse(cnt)
-
-            skin_new = cv2.ellipse(skin_new, ellipse, (0, 255, 0), 2)
-
-            rows, cols = skin_new.shape[:2]
-            [vx, vy, x, y] = cv2.fitLine(cnt, cv2.DIST_L2, 0, 0.01, 0.01)
-            lefty = int((-x*vy/vx) + y)
-            righty = int(((cols-x)*vy/vx)+y)
-            print("line: " + str(vx) + ", " + str(vy) +
-                    ", " + str(x) + ", " + str(y))
-            if (vx > 0 and vy > 0 and x > 0 and y > 0):
-                skin_new = cv2.line(skin_new, (cols-1, righty),
-                                    (0, lefty), color, 2)
-            
-                                    '''
             if (farthest_point != None) and (len(farthest_point) > 0):
                 avg_points.append(farthest_point)
-            print("average points" + str(avg_points))
+            # print("average points" + str(avg_points))
+            # raw_input()
             i += 1
-            # Show in a window
+
+            if (len(avg_points) > 40):
+                avg_points.pop(0)
+                print("Length of avg_points is: " + str(len(avg_points)) + ", removing first element...")
+
             total_x = 0
             avg_x = 0
             total_y = 0
             avg_y = 0
-            if (len(avg_points) > 50):
+
+            if (len(avg_points) > 1):
+                print("Calculating running average and variance...")
+                sum_x = 0
+                sum_y = 0
+                for point in avg_points:
+                    sum_x += point[0]
+                    sum_y += point[1]
+                # calculated average of all found points
+                average_x = sum_x / len(avg_points)
+                average_y = sum_y / len(avg_points)
+                print("Average is: " + str(average_x) + ", " + str(average_y))
+                # now: find variance
+
+                variance_sum_x = 0
+                variance_sum_y = 0
+                for point in avg_points:
+                    variance_sum_x += math.pow(point[0] - average_x, 2)
+                    variance_sum_y += math.pow(point[1] - average_y, 2)
+
+                variance_x = variance_sum_x / len(avg_points)
+                variance_y = variance_sum_y / len(avg_points)
+
+                print("Variance is: " + str(variance_x) + ", " + str(variance_y))
+                if cv2.waitKey(10) & 0xFF == ord('q'):
+                    break
+
+            if (variance_x < 15 and variance_y < 15):
+                print("Variance is smaller than 2, accepting result.")
+                return(average_x, average_y)
+
+
+        # cv2.imshow('Contours', skin_new)
+
+        # if the 'q' key is pressed, stop the loop
+        # if cv2.waitKey(5000) & 0xFF == ord("q"):
+        #    break
+
+    # cleanup the camera and close any open windows
+    camera.release()
+    cv2.destroyAllWindows()
+
+
+'''
+            if (len(avg_points) == 5):
                 for pt in avg_points:
                     total_x += pt[0]
                     total_y += pt[1]
@@ -316,12 +540,4 @@ def detectGesture():
                 avg_y = total_y / len(avg_points)
                 print("found point: " + str(avg_x) + ", " + str(avg_y))
                 return (avg_x, avg_y)
-        cv2.imshow('Contours', skin_new)
-
-        # if the 'q' key is pressed, stop the loop
-        if cv2.waitKey(5000) & 0xFF == ord("q"):
-            break
-
-    # cleanup the camera and close any open windows
-    camera.release()
-    cv2.destroyAllWindows()
+'''
