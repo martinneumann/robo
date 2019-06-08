@@ -7,6 +7,21 @@ import math
 import operator
 
 
+def fliph(imgg):
+    img2 = np.zeros([480, 640, 3], np.uint8)
+    img3 = np.zeros([480, 640, 3], np.uint8)
+
+    for i in range(640):
+
+        img2[:, i] = imgg[:, 640-i-1]
+
+    for i in range(480):
+
+        img3[i, :] = img2[480-i-1, :]
+
+    return img3
+
+
 def draw_positions(position, calibratedPosition, img):
     # position = "000A10C10E10G10B20D20F20H20A30C30E30G30B80D80F80H80A70C70E70G70B60D60F60H6000"
     # calibratedPosition is board_fields
@@ -26,14 +41,14 @@ def draw_positions(position, calibratedPosition, img):
         if peace_w != "000":
             # loop over position, draw circle if not zero
             pos = calibratedPosition[peace_w[1:3]]
-            print("point for drawing: " + str(pos))
+            # print("point for drawing: " + str(pos))
             cv2.circle(img, (pos[0], pos[1]),
                        11, (220, 220, 220), -1)
             cv2.circle(img, (pos[0], pos[1]),
                        12, (150, 100, 200), 1)
         if peace_b != "000":
             pos = calibratedPosition[peace_b[1:3]]
-            print("point for drawing: " + str(pos))
+            # print("point for drawing: " + str(pos))
             cv2.circle(img, (pos[0], pos[1]),
                        12, (0, 0, 0), -1)
             cv2.circle(img, (pos[0], pos[1]),
@@ -419,7 +434,14 @@ def detectGesture(position, board_fields):
         skinMask = cv2.GaussianBlur(skinMask, (3, 3), 0)
         skin = cv2.bitwise_and(frame, frame, mask=skinMask)
         draw_positions(position, board_fields, frame)
-        cv2.imshow("displayWindow", frame)
+        # rows, cols, _ = frame.shape
+
+
+        # M = cv2.getRotationMatrix2D((cols/2, rows/2), 90, 1)
+        # dst = cv2.warpAffine(frame, M, (cols, rows))
+        frame_ = fliph(frame)
+
+        cv2.imshow("displayWindow", frame_)
         skin_new = cv2.Canny(skin, 100,  255)
         skin_new = cv2.dilate(skin_new, None, iterations=1)
         # skin_new = cv2.erode(skin_new, None, iterations=1)
@@ -558,8 +580,8 @@ def detectGesture(position, board_fields):
                 if cv2.waitKey(10) & 0xFF == ord('q'):
                     break
 
-            if (variance_x < 15 and variance_y < 15):
-                print("Variance is smaller than 2, accepting result.")
+            if (variance_x < 30 and variance_y < 30):
+                print("Variance is smaller than 30, accepting result.")
                 return(average_x, average_y), frame
 
         # cv2.imshow('Contours', skin_new)

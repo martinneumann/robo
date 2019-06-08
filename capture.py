@@ -319,15 +319,16 @@ class Handler:
                   str(rules.turn_endet(position)))
             self.performMove(current_move)
             print("Detection finished.")
-            position = rules.new_position(position, movestring)
+            # position = rules.new_position(position, movestring)
+            print("before garbage: " + str(position))
             if (eat_move != "00"):
                 print("a piece was beaten, performing removal...")
                 if (current_player == 1):
                     current_move = [["1" + eat_move], ["2" +
-                                                       eat_move], ["1" + gargabe_pos[0]], ["3" + gargabe_pos[0]]
+                                                       eat_move], ["1" + gargabe_pos[0]], ["3" + gargabe_pos[0]]]
                 else:
                     current_move = [["1" + eat_move], ["2" +
-                                                       eat_move], ["1" + gargabe_pos[1]], ["3" + gargabe_pos[1]]
+                                                       eat_move], ["1" + gargabe_pos[1]], ["3" + gargabe_pos[1]]]
 
                 # current_move = [["1" + eat_move], ["2" +
                 #                                   eat_move], ["1" + letters[number_of_beaten_pieces] + garbage[current_garbage]], ["3" + letters[number_of_beaten_pieces] + garbage[current_garbage]]]
@@ -416,6 +417,7 @@ class Handler:
                         1, (100, 100, 100))
 
         both = np.hstack((frame_, img))
+
         cv2.imshow('displayWindow', both)
 
         print("setup ready.")

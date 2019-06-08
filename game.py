@@ -1,15 +1,19 @@
 import operator
+import time
 
 
 def restart_game():
     position = "000A10C10E10G10B20D20F20H20A30C30E30G30B80D80F80H80A70C70E70G70B60D60F60H6000"
     b = "000A30B40000000000000000000000000000000D6000000000000000000000000000000000000"
     c = "000B40C50000000000000000000000000000000E7000000000000000000000000000000000000"
+    d = "000A10C10E11G11B20D20F20H20A30C30E30G30B80D80F80H80A70C70E71G70B61D60F60H6000"
+
     print(len(position))
-    return position  # return begin Position for a new game
+    return c  # return begin Position for a new game
 
 
 def new_position(old_position, move):
+    
     # TODO did Peace change to King ?
 
     if move[0:2] == old_position[0:2]:  # delete must_move
@@ -178,6 +182,7 @@ def new_position(old_position, move):
 
     # if king (can advance and recule)... else(only advance) ...
     new_position = "".join(s)
+    print("new position: " + new_position)
     return new_position
 
 
@@ -294,6 +299,7 @@ def Valid_move(position, move):  # move is in form "A1 B2"
         if position[0:2] != move[0:2] or abs(int_pos1 - int_pos2) != 2:
             a = False
     # if valid
+    print("position for verify: " + position)
     return a
     # else return false
 # intern funktions
@@ -490,8 +496,8 @@ def make_move(position):  # black is the KI
             black_pos_4 = verif_place(black_pos, pos_4)
             white_pos_1 = verif_place(white_pos, pos_1)
             white_pos_2 = verif_place(white_pos, pos_2)
-            white_pos_2 = verif_place(white_pos, pos_3)
-            white_pos_2 = verif_place(white_pos, pos_4)
+            white_pos_3 = verif_place(white_pos, pos_3)
+            white_pos_4 = verif_place(white_pos, pos_4)
             if black_pos_1 == "000" and white_pos_1 == "000":
                 movement = letter[x[1]] + str(x[2]) + " " + pos_1
                 priority = 1
