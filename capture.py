@@ -218,7 +218,6 @@ class Handler:
         global game_type
         global eat_move
         global gargabe_pos
-        global garbage
         global number_of_beaten_pieces
         global current_garbage
 
@@ -325,10 +324,10 @@ class Handler:
                 print("a piece was beaten, performing removal...")
                 if (current_player == 1):
                     current_move = [["1" + eat_move], ["2" +
-                                                       eat_move], ["1" + gargabe_pos[0] + garbage[current_garbage]], ["3" + gargabe_pos[0] + garbage[current_garbage]]]
+                                                       eat_move], ["1" + gargabe_pos[0]], ["3" + gargabe_pos[0]]
                 else:
                     current_move = [["1" + eat_move], ["2" +
-                                                       eat_move], ["1" + gargabe_pos[1] + garbage[current_garbage]], ["3" + gargabe_pos[1] + garbage[current_garbage]]]
+                                                       eat_move], ["1" + gargabe_pos[1]], ["3" + gargabe_pos[1]]
 
                 # current_move = [["1" + eat_move], ["2" +
                 #                                   eat_move], ["1" + letters[number_of_beaten_pieces] + garbage[current_garbage]], ["3" + letters[number_of_beaten_pieces] + garbage[current_garbage]]]
