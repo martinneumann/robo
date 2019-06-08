@@ -13,6 +13,9 @@ import time
 from operator import itemgetter
 gi.require_version('Gtk', '3.0')
 
+displayWindow = cv2.namedWindow("displayWindow", cv2.WINDOW_NORMAL)
+
+
 edges = []
 board_fields = {}
 
@@ -29,8 +32,7 @@ game_type = "none"
 eat_move = "00"
 number_of_beaten_pieces = 0
 current_garbage = 0
-letters = ['A', 'B', 'C', 'D', 'E', 'F']
-garbage = ['X', 'Y', 'V', 'W']
+gargabe_pos = ['A0', 'A9']
 
 
 class communicationManager():
@@ -215,7 +217,7 @@ class Handler:
         global position
         global game_type
         global eat_move
-        global letters
+        global gargabe_pos
         global garbage
         global number_of_beaten_pieces
         global current_garbage
@@ -229,7 +231,10 @@ class Handler:
                                 ["1" + movestring[3] + movestring[4]], ["3" + movestring[3] + movestring[4]]]
 
             else:
-                foundPoint = camera.detectGesture()
+                foundPoint, img = camera.detectGesture(position, board_fields)
+                camera.draw_positions(
+                    position, board_fields, img)
+
                 # x = "0"
                 # print("enter piece position: ")
                 # x = raw_input()
@@ -268,7 +273,7 @@ class Handler:
                 # print("enter target position: ")
                 # x = raw_input()
                 # foundPoint = board_fields[x]
-                foundPoint = camera.detectGesture()
+                foundPoint, _ = camera.detectGesture(position, board_fields)
                 for points in board_fields:
                     # print(str(board_fields[points]))
                     # loop over all points and find closest
@@ -296,9 +301,9 @@ class Handler:
                 print("\n *** TEST *** \n")
                 if (rules.Valid_move(position, movestring) == False) or (rules.verif_collor(position, movestring, "white") == False):
                     print(
-                        "Move is invalid, please try again! Press any key to start new detection.")
+                        "Move is invalid, please try again! Starting new detection...")
                     # raw_input()
-                    time.sleep(3)
+                    time.sleep(5)
                     return
                 print("Move is valid.")
 
@@ -318,12 +323,19 @@ class Handler:
             position = rules.new_position(position, movestring)
             if (eat_move != "00"):
                 print("a piece was beaten, performing removal...")
-                current_move = [["1" + eat_move], ["2" +
-                                                   eat_move], ["1" + letters[number_of_beaten_pieces] + garbage[current_garbage]], ["3" + letters[number_of_beaten_pieces] + garbage[current_garbage]]]
-                number_of_beaten_pieces += 1
-                if (letters[number_of_beaten_pieces] == 'F'):
-                    number_of_beaten_pieces = 0
-                    current_garbage += 1
+                if (current_player == 1):
+                    current_move = [["1" + eat_move], ["2" +
+                                                       eat_move], ["1" + gargabe_pos[0] + garbage[current_garbage]], ["3" + gargabe_pos[0] + garbage[current_garbage]]]
+                else:
+                    current_move = [["1" + eat_move], ["2" +
+                                                       eat_move], ["1" + gargabe_pos[1] + garbage[current_garbage]], ["3" + gargabe_pos[1] + garbage[current_garbage]]]
+
+                # current_move = [["1" + eat_move], ["2" +
+                #                                   eat_move], ["1" + letters[number_of_beaten_pieces] + garbage[current_garbage]], ["3" + letters[number_of_beaten_pieces] + garbage[current_garbage]]]
+                # number_of_beaten_pieces += 1
+                # if (letters[number_of_beaten_pieces] == 'F'):
+                #    number_of_beaten_pieces = 0
+                #    current_garbage += 1
 
                 self.performMove(current_move)
 
@@ -405,8 +417,7 @@ class Handler:
                         1, (100, 100, 100))
 
         both = np.hstack((frame_, img))
-
-        cv2.imshow('received points', both)
+        cv2.imshow('displayWindow', both)
 
         print("setup ready.")
 
@@ -457,7 +468,7 @@ class game():
 def getMoveToPoint():
     # finds the next move within this move chain
     print("getting move")
-    moves.append("1" + camera.detectGesture())
+    moves.append("1" + camera.detectGesture(position, board_fields)[0])
 
 
 builder = Gtk.Builder()

@@ -6,7 +6,7 @@ def restart_game():
     b = "000A30B40000000000000000000000000000000D6000000000000000000000000000000000000"
     c = "000B40C50000000000000000000000000000000E7000000000000000000000000000000000000"
     print(len(position))
-    return c  # return begin Position for a new game
+    return position  # return begin Position for a new game
 
 
 def new_position(old_position, move):

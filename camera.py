@@ -7,14 +7,51 @@ import math
 import operator
 
 
+def draw_positions(position, calibratedPosition, img):
+    # position = "000A10C10E10G10B20D20F20H20A30C30E30G30B80D80F80H80A70C70E70G70B60D60F60H6000"
+    # calibratedPosition is board_fields
+    # img is the cv2 image where drawing takes place
+
+
+
+    letter = ["A", "B", "C", "D", "E", "F", "G", "H", "X"]
+
+    white_pos = position[2:38]      # values for white pieces   
+    black_pos = position[38:74]     # values for black pieces
+
+    for x in range(12):
+        xx = 3 * x
+        peace_w = white_pos[xx:xx+3]
+        peace_b = black_pos[xx:xx+3]
+        if peace_w != "000":
+            # loop over position, draw circle if not zero
+            pos = calibratedPosition[peace_w[1:3]]
+            print("point for drawing: " + str(pos))
+            cv2.circle(img, (pos[0], pos[1]),
+                       11, (220, 220, 220), -1)
+            cv2.circle(img, (pos[0], pos[1]),
+                       12, (150, 100, 200), 1)
+        if peace_b != "000":
+            pos = calibratedPosition[peace_b[1:3]]
+            print("point for drawing: " + str(pos))
+            cv2.circle(img, (pos[0], pos[1]),
+                       12, (0, 0, 0), -1)
+            cv2.circle(img, (pos[0], pos[1]),
+                       12, (150, 100, 200), 1)
+    # cv2.imshow("displayWindow", img)
+                # matrix_list[y_cor_b][x_cor_b] = symbole_b
+
+
+
+
 def draw_hand_rect(self, frame):
     rows, cols, _ = frame.shape
 
     self.hand_row_nw = np.array([6*rows/20, 6*rows/20, 6*rows/20, 10 *
-                                rows/20, 10*rows/20, 10*rows/20, 14*rows/20, 14*rows/20, 14*rows/20])
+                                 rows/20, 10*rows/20, 10*rows/20, 14*rows/20, 14*rows/20, 14*rows/20])
 
     self.hand_col_nw = np.array([9*cols/20, 10*cols/20, 11*cols/20, 9 *
-                                cols/20, 10*cols/20, 11*cols/20, 9*cols/20, 10*cols/20, 11*cols/20])
+                                 cols/20, 10*cols/20, 11*cols/20, 9*cols/20, 10*cols/20, 11*cols/20])
 
     self.hand_row_se = self.hand_row_nw + 10
     self.hand_col_se = self.hand_col_nw + 10
@@ -179,7 +216,7 @@ def calibrate():
                         elem[1])), 7, (255, 0, 0), -1)
                     cv2.putText(img, (str(elem[0]) + ", " + str(elem[1])), (int(elem[0]) - 20, int(elem[1]) - 20),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 2)
-                    cv2.imshow('robot view', img)
+                    cv2.imshow('displayWindow', img)
 
                 # put board
                 edges = []
@@ -290,17 +327,17 @@ def calibrate():
                     break
 
                 cap.release()
-                cv2.destroyAllWindows()
+                # cv2.destroyAllWindows()
                 # print str(av_edge[0])
                 return board_fields, img
 
             # Display the resulting frame
             if cv2.waitKey(100) & 0xFF == ord('q'):
                 break
-            cv2.imshow('robot view', img)
+            cv2.imshow('displayWindow', img)
 
     cap.release()
-    cv2.destroyAllWindows()
+    # cv2.destroyAllWindows()
 
 
 def getEightPointsBetween(img, x1, y1, x2, y2):
@@ -332,10 +369,14 @@ def subtractPoint(x1, y1, x2, y2):
 
 
 def getDistance(x1, y1, x2, y2):
+    x1 = int(x1)
+    y1 = int(y1)
+    x2 = int(x2)
+    y2 = int(y2)
     return math.sqrt(math.pow((x2 - x1), 2) + math.pow((y2 - y1), 2))
 
 
-def detectGesture():
+def detectGesture(position, board_fields):
     camera = cv2.VideoCapture(-1)
     # match = cv2.imread("data/000.png")
     # match = cv2.cvtColor(match, cv2.COLOR_BGR2GRAY)
@@ -377,7 +418,8 @@ def detectGesture():
         # mask to the frame
         skinMask = cv2.GaussianBlur(skinMask, (3, 3), 0)
         skin = cv2.bitwise_and(frame, frame, mask=skinMask)
-        cv2.imshow("detection", np.hstack([frame, skin]))
+        draw_positions(position, board_fields, frame)
+        cv2.imshow("displayWindow", frame)
         skin_new = cv2.Canny(skin, 100,  255)
         skin_new = cv2.dilate(skin_new, None, iterations=1)
         # skin_new = cv2.erode(skin_new, None, iterations=1)
@@ -482,7 +524,8 @@ def detectGesture():
 
             if (len(avg_points) > 40):
                 avg_points.pop(0)
-                print("Length of avg_points is: " + str(len(avg_points)) + ", removing first element...")
+                print("Length of avg_points is: " +
+                      str(len(avg_points)) + ", removing first element...")
 
             total_x = 0
             avg_x = 0
@@ -517,8 +560,7 @@ def detectGesture():
 
             if (variance_x < 15 and variance_y < 15):
                 print("Variance is smaller than 2, accepting result.")
-                return(average_x, average_y)
-
+                return(average_x, average_y), frame
 
         # cv2.imshow('Contours', skin_new)
 
@@ -528,7 +570,6 @@ def detectGesture():
 
     # cleanup the camera and close any open windows
     camera.release()
-    cv2.destroyAllWindows()
 
 
 '''
